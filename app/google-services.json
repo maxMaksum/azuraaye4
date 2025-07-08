@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1020288186370",
+    "project_id": "azuratime-9bba8",
+    "storage_bucket": "azuratime-9bba8.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1020288186370:android:ef9df0eaa3da61a5188f1b",
+        "android_client_info": {
+          "package_name": "com.azura.azuratime"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBI7sgUdscmrEfrbW9JDou_SN2YADu4Rj4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
