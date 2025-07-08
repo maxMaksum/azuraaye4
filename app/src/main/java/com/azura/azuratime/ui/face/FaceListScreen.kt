@@ -10,6 +10,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.azura.azuratime.db.FaceEntity
 import com.azura.azuratime.viewmodel.FaceViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.azura.azuratime.sync.FaceSyncWorker
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Sync
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,7 +39,16 @@ fun FaceListScreen(
                 onCreateTest = { /* implement test face creation */ },
                 onVerifyDb = { /* implement db verification */ }
             )
-        }
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { FaceSyncWorker.enqueue(context) },
+                containerColor = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(Icons.Default.Sync, contentDescription = "Sync Faces")
+            }
+        },
+        floatingActionButtonPosition = FabPosition.Start
     ) { padding ->
         Column(
             modifier = Modifier
