@@ -254,9 +254,10 @@ fun CheckInScreen(
         }
     }
 
-    // Hide snackbar when face is not detected
+    // Reset processing state and hide snackbar when face is not detected
     LaunchedEffect(matchName) {
         if (matchName == null) {
+            isProcessingCheckIn = false
             showAlreadyCheckedIn = false
             showSnackbar = false
             snackbarHostState.currentSnackbarData?.dismiss()
