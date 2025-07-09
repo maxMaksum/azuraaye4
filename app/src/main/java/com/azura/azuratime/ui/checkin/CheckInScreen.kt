@@ -49,6 +49,7 @@ fun CheckInScreen(
     var greeting by remember { mutableStateOf("") }
     var showAlreadyCheckedIn by remember { mutableStateOf(false) }
     var showSnackbar by remember { mutableStateOf(false) }
+    var isProcessingCheckIn by remember { mutableStateOf(false) }
 
     val tts = remember { mutableStateOf<TextToSpeech?>(null) }
 
@@ -111,7 +112,8 @@ fun CheckInScreen(
                         showAlreadyCheckedIn = wasAlreadyCheckedIn
                         showSnackbar = wasAlreadyCheckedIn
 
-                        if (!wasAlreadyCheckedIn) {
+                        if (!wasAlreadyCheckedIn && !isProcessingCheckIn) {
+                            isProcessingCheckIn = true
                             val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
                             greeting = when (hour) {
                                 in 5..11 -> "Good morning"
