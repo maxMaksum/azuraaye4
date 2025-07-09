@@ -17,6 +17,14 @@ class CheckInSyncWorker(
     workerParams: WorkerParameters
 ) : CoroutineWorker(appContext, workerParams) {
     override suspend fun doWork(): Result {
+        // Cooldown: Only sync if at least 1 minute has passed since last sync
+        val prefs = applicationContext.getSharedPreferences("checkin_sync_prefs", Context.MODE_PRIVATE)
+        val lastSync = prefs.getLong("last_sync_time", 0L)
+        val now = System.currentTimeMillis()
+        if (now - lastSync < 60_000) {
+            // Less than 1 minute since last sync, skip
+            return Result.success()
+        }
         val db = AppDatabase.getInstance(applicationContext)
         val dao = db.checkInDao()
         val firestore = FirebaseFirestore.getInstance()
@@ -41,6 +49,7 @@ class CheckInSyncWorker(
             }
             batch.commit().await()
             dao.markAsSynced(idsToMark)
+            
             Result.success()
         } catch (e: Exception) {
             e.printStackTrace()
