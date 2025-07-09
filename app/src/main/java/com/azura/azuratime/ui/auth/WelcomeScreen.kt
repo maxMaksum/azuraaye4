@@ -10,7 +10,7 @@ import com.azura.azuratime.ui.components.AzuraButton
 import com.azura.azuratime.ui.components.AzuraOutlinedButton
 
 @Composable
-fun WelcomeScreen(onLogin: () -> Unit, onSignup: () -> Unit) {
+fun WelcomeScreen(onLogin: () -> Unit, onSignup: () -> Unit, onEmailRegister: () -> Unit, onAdminRegister: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         Column(
             modifier = Modifier.align(Alignment.Center).padding(32.dp),
@@ -20,7 +20,11 @@ fun WelcomeScreen(onLogin: () -> Unit, onSignup: () -> Unit) {
             Spacer(Modifier.height(32.dp))
             AzuraButton(onClick = onLogin, modifier = Modifier.fillMaxWidth(), text = "Login")
             Spacer(Modifier.height(16.dp))
-            AzuraOutlinedButton(onClick = onSignup, modifier = Modifier.fillMaxWidth(), text = "Sign Up")
+            AzuraOutlinedButton(onClick = onSignup, modifier = Modifier.fillMaxWidth(), text = "Sign Up (Legacy)")
+            Spacer(Modifier.height(16.dp))
+            AzuraOutlinedButton(onClick = onEmailRegister, modifier = Modifier.fillMaxWidth(), text = "Register with Email")
+            Spacer(Modifier.height(16.dp))
+            AzuraOutlinedButton(onClick = onAdminRegister, modifier = Modifier.fillMaxWidth(), text = "Register as Admin")
         }
     }
 }

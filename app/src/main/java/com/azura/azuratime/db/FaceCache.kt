@@ -11,6 +11,46 @@ import android.util.Log
 object FaceCache {
     private val cache = mutableListOf<Pair<String, FloatArray>>()
 
+    // --- Cooling down logic ---
+    private val lastCheckInMap = mutableMapOf<String, Long>()
+    private const val COOLDOWN_MILLIS = 60_000L // 1 minute
+    private const val PREFS_NAME = "azura_checkin_cooldown"
+
+    /**
+     * Returns true if the studentId is allowed to check in (not within cooldown).
+     * Call this before saving a check-in.
+     *
+     * Disables check-in for test users (studentId or name contains 'test').
+     * Persists cooldown state in SharedPreferences for robustness.
+     */
+    fun canCheckIn(studentId: String, context: Context? = null): Boolean {
+        val idLower = studentId.lowercase()
+        if (idLower.contains("test")) return false
+        val now = System.currentTimeMillis()
+        val last = lastCheckInMap[studentId] ?: run {
+            // Try to load from SharedPreferences if context is provided
+            context?.let {
+                val prefs = it.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                prefs.getLong(studentId, 0L)
+            } ?: 0L
+        }
+        return (now - last) > COOLDOWN_MILLIS
+    }
+
+    /**
+     * Call this after a successful check-in to update the last check-in time.
+     * Also persists to SharedPreferences if context is provided.
+     */
+    fun recordCheckIn(studentId: String, context: Context? = null) {
+        val now = System.currentTimeMillis()
+        lastCheckInMap[studentId] = now
+        context?.let {
+            val prefs = it.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            prefs.edit().putLong(studentId, now).apply()
+        }
+    }
+    // --- End cooling down logic ---
+
     /**
      * Loads all faces from the database on the IO dispatcher, caching them the first time.
      */

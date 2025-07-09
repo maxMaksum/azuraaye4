@@ -61,15 +61,25 @@ fun LoginScreen(
         Button(
             onClick = {
                 loading = true
-                val hash = password.sha256()
-                userViewModel.login(username, hash,
+                // Try Firebase login first
+                userViewModel.loginFirebase(username, password,
                     onSuccess = {
                         loading = false
                         onLoginSuccess(userViewModel.currentUser.value?.role ?: "")
                     },
-                    onError = {
-                        loading = false
-                        error = it
+                    onError = { firebaseError ->
+                        // If Firebase login fails, try offline login
+                        val hash = password.sha256()
+                        userViewModel.loginOffline(username, hash,
+                            onSuccess = {
+                                loading = false
+                                onLoginSuccess(userViewModel.currentUser.value?.role ?: "")
+                            },
+                            onError = { offlineError ->
+                                loading = false
+                                error = firebaseError + "\n" + offlineError
+                            }
+                        )
                     }
                 )
             },

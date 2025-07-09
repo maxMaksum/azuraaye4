@@ -143,7 +143,9 @@ dependencies {
     // Add lifecycle-runtime-compose for collectAsStateWithLifecycle
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.6.2")
 
-    // Firebase Firestore
+    // Firebase Auth and Firestore (BOM must be declared with 'implementation')
+    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
+    implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-firestore-ktx:24.10.3")
 
     // WorkManager

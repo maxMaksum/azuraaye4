@@ -26,6 +26,8 @@ class FaceSyncWorker(
             // 1. Upload all local faces to Firestore (upsert by studentId)
             val localFaces = dao.getAllFaces()
             for (face in localFaces) {
+                // Skip syncing test users
+                if (face.studentId.contains("test", ignoreCase = true)) continue
                 val data = FirestoreConverters.faceToMap(face)
                 facesCollection.document(face.studentId).set(data).await()
             }

@@ -38,8 +38,8 @@ fun DashboardScreen(
                     onDeveloperSettings = onDeveloperSettings // <-- Pass this parameter
                 )
                 "guru" -> TeacherDashboard(name, onGoToMain)
-                "siswa" -> UserDashboard(name, onGoToMain)
-                else -> Text("Unknown role")
+                "siswa", "", null -> UserDashboard(name, onGoToMain)
+                else -> UserDashboard(name, onGoToMain)
             }
         }
     }

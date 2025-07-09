@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.azura.azuratime.db.AppDatabase
 import com.azura.azuratime.db.CheckInEntity
+import com.azura.azuratime.db.FaceCache
 import com.azura.azuratime.sync.CheckInSyncWorker
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
@@ -20,8 +21,16 @@ class CheckInViewModel(application: Application) : AndroidViewModel(application)
 
     fun insertCheckIn(checkIn: CheckInEntity) {
         viewModelScope.launch {
-            checkInDao.insert(checkIn)
-            CheckInSyncWorker.enqueue(context)
+            // Cooling down logic: only allow if not within cooldown
+            if (FaceCache.canCheckIn(checkIn.studentId, context)) {
+                checkInDao.insert(checkIn)
+                FaceCache.recordCheckIn(checkIn.studentId, context)
+                CheckInSyncWorker.enqueue(context)
+            } else {
+                // Optionally, you can show a message to the user here (e.g., via a callback or LiveData)
+                // For now, just skip duplicate check-in
+                // Log.d("CheckInViewModel", "Check-in blocked by cooldown for ${checkIn.studentId}")
+            }
         }
     }
 }

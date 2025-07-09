@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.azura.azuratime.db.AppDatabase
 import com.azura.azuratime.db.UserEntity
+import com.azura.azuratime.repository.AuthRepository
 import com.azura.azuratime.repository.UserRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,11 +16,28 @@ import kotlinx.coroutines.withContext
 class UserViewModel(application: Application) : AndroidViewModel(application) {
     private val userDao = AppDatabase.getInstance(application).userDao()
     private val repository = UserRepository(userDao)
+    private val authRepository = AuthRepository(userDao)
 
     private val _currentUser = MutableStateFlow<UserEntity?>(null)
     val currentUser: StateFlow<UserEntity?> = _currentUser
 
-    fun login(username: String, passwordHash: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+    fun loginFirebase(email: String, password: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val user = authRepository.loginFirebase(email, password)
+            if (user != null) {
+                withContext(Dispatchers.Main) {
+                    _currentUser.value = user
+                    onSuccess()
+                }
+            } else {
+                withContext(Dispatchers.Main) {
+                    onError("Firebase login failed")
+                }
+            }
+        }
+    }
+
+    fun loginOffline(username: String, passwordHash: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             val user = repository.getUserByUsername(username)
             if (user != null && user.passwordHash == passwordHash) {
@@ -37,6 +55,7 @@ class UserViewModel(application: Application) : AndroidViewModel(application) {
 
     fun logout() {
         viewModelScope.launch(Dispatchers.Main) {
+            authRepository.logout()
             _currentUser.value = null
         }
     }

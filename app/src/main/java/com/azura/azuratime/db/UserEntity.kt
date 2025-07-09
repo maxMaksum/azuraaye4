@@ -7,7 +7,8 @@ import androidx.room.PrimaryKey
 data class UserEntity(
     @PrimaryKey val username: String,
     val passwordHash: String, // Simpan hash bukan plaintext!
-    val name: String,
+    val name: String = "",
     val role: String, // admin, guru, siswa
-    val createdAt: Long
+    val createdAt: Long = System.currentTimeMillis(),
+    val phoneId: String = "" // New field for device/phone ID
 )

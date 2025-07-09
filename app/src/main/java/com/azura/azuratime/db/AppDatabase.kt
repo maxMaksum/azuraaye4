@@ -5,6 +5,8 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
+import com.azura.azuratime.db.PhoneIdEntity
+import com.azura.azuratime.db.PhoneIdDao
 
 @Database(
     entities = [
@@ -16,9 +18,10 @@ import androidx.room.TypeConverters
         RoleOption::class,
         FaceEntity::class,
         CheckInEntity::class, // Use new entity
-        UserEntity::class // Added UserEntity for authentication
+        UserEntity::class, // Added UserEntity for authentication
+        PhoneIdEntity::class // RE-ENABLED for PhoneIdDao
     ],
-    version = 6, // Increment version for schema change
+    version = 9, // Bump version for schema change
     exportSchema = true
 )
 @TypeConverters(Converters::class)
@@ -32,6 +35,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun roleOptionDao(): RoleOptionDao
     abstract fun checkInDao(): CheckInDao // Use new DAO
     abstract fun userDao(): UserDao // Added UserDao
+    abstract fun phoneIdDao(): PhoneIdDao // RE-ENABLED for PhoneIdDao
 
     companion object {
         @Volatile private var INSTANCE: AppDatabase? = null

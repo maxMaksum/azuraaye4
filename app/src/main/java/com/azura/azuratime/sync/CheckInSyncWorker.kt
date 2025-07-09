@@ -27,6 +27,8 @@ class CheckInSyncWorker(
             val checkInsRef = firestore.collection("Checkins")
             val idsToMark = mutableListOf<Int>()
             for (checkIn in unsynced) {
+                // Skip syncing test users
+                if (checkIn.studentId.contains("test", ignoreCase = true)) continue
                 val doc = checkInsRef.document()
                 val data = hashMapOf(
                     "studentId" to checkIn.studentId,

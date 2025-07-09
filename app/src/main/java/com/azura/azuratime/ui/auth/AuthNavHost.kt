@@ -30,13 +30,26 @@ fun AuthNavHost() {
         composable("welcome") {
             WelcomeScreen(
                 onLogin = { navController.navigate("login") },
-                onSignup = { navController.navigate("register") }
+                onSignup = { navController.navigate("register") },
+                onEmailRegister = { navController.navigate("email_register") },
+                onAdminRegister = { navController.navigate("admin_register") }
+            )
+        }
+        composable("email_register") {
+            EmailRegisterScreen(
+                onRegisterSuccess = { navController.navigate("login") },
+                onBackToLogin = { navController.navigate("login") }
             )
         }
         composable("login") {
             LoginScreen(userViewModel,
                 onLoginSuccess = { role ->
-                    sessionManager.saveUserSession(userViewModel.currentUser.value!!)
+                    // Always save session with fallback for name
+                    val user = userViewModel.currentUser.value
+                    if (user != null) {
+                        val safeUser = user.copy(name = user.name ?: user.username)
+                        sessionManager.saveUserSession(safeUser)
+                    }
                     navController.navigate("dashboard") { popUpTo(0) }
                 },
                 onBackToSignup = { navController.navigate("register") }
@@ -72,9 +85,13 @@ fun AuthNavHost() {
             com.azura.azuratime.ui.admin.FaceManagementScreen(onBack = { navController.popBackStack() })
         }
         composable("register") {
-            RegisterUserScreen(userViewModel,
-                onUserRegistered = { navController.popBackStack() },
-                onBackToLogin = { navController.navigate("login") }
+            EmailRegisterScreen(
+                onRegisterSuccess = {
+                    navController.navigate("login")
+                },
+                onBackToLogin = {
+                    navController.navigate("login")
+                }
             )
         }
         composable("developer_settings") {
@@ -82,6 +99,12 @@ fun AuthNavHost() {
         }
         composable("database_sync") {
             com.azura.azuratime.ui.admin.DatabaseSyncScreen()
+        }
+        composable("admin_register") {
+            AdminRegisterScreen(
+                onRegisterSuccess = { navController.navigate("login") },
+                onBackToLogin = { navController.navigate("login") }
+            )
         }
     }
 }
