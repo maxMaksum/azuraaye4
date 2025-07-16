@@ -19,6 +19,7 @@
 // Forward declarations
 bool verifyHmacSignature(const std::string& data, const std::string& receivedSignature, const std::string& secret);
 std::string hmac_sha256(const std::string& key, const std::string& data);
+std::string getHmacSecretFromKeystore(JNIEnv* env, jobject context);
 
 #ifndef SHA256_BLOCK_SIZE
 #define SHA256_BLOCK_SIZE 32
