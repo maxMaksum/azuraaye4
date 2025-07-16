@@ -6,6 +6,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -15,6 +16,7 @@ import com.azura.azuratime.ui.components.AzuraFormField
 import com.azura.azuratime.ui.components.AzuraOutlinedButton
 import com.azura.azuratime.utils.sha256
 import com.azura.azuratime.viewmodel.UserViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun RegisterUserScreen(
@@ -26,8 +28,12 @@ fun RegisterUserScreen(
     var password by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
     var role by remember { mutableStateOf("admin") }
-    var error by remember { mutableStateOf<String?>(null) }
     var loading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    val context = LocalContext.current
+    val sessionManager = remember { com.azura.azuratime.session.SessionManager(context) }
+    val coroutineScope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier
@@ -78,24 +84,36 @@ fun RegisterUserScreen(
         AzuraButton(
             onClick = {
                 loading = true
-                val hash = password.sha256()
-                val user = UserEntity(
-                    username = username,
-                    passwordHash = hash,
-                    name = name,
-                    role = role,
-                    createdAt = System.currentTimeMillis()
-                )
-                userViewModel.registerUser(user,
-                    onSuccess = {
+                error = null
+                coroutineScope.launch {
+                    val result = com.azura.azuratime.repository.EmailAuthRepository.registerWithEmail(username, password)
+                    if (result.isSuccess) {
+                        val firebaseUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                        val uid = firebaseUser?.uid ?: ""
+                        sessionManager.saveUid(uid)
+                        val hash = password.sha256()
+                        val user = com.azura.azuratime.db.UserEntity(
+                            username = username,
+                            passwordHash = hash,
+                            name = name,
+                            role = role,
+                            createdAt = System.currentTimeMillis()
+                        )
+                        userViewModel.registerUser(user,
+                            onSuccess = {
+                                loading = false
+                                onUserRegistered()
+                            },
+                            onError = {
+                                loading = false
+                                error = it
+                            }
+                        )
+                    } else {
                         loading = false
-                        onUserRegistered()
-                    },
-                    onError = {
-                        loading = false
-                        error = it
+                        error = result.exceptionOrNull()?.message ?: "Registration failed"
                     }
-                )
+                }
             },
             enabled = !loading,
             modifier = Modifier.fillMaxWidth(),

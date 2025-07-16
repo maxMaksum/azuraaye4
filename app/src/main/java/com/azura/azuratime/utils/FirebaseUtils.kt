@@ -5,6 +5,8 @@ import com.google.firebase.firestore.SetOptions
 import com.azura.azuratime.db.FaceEntity
 import com.azura.azuratime.db.CheckInEntity
 import com.azura.azuratime.db.UserEntity
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.tasks.await
 
 object FirebaseUtils {
@@ -99,6 +101,51 @@ object FirebaseUtils {
             }
         } catch (e: Exception) {
             null
+        }
+    }
+
+    // ===== Device Registration Functions =====
+    suspend fun registerDevice(userId: String, deviceId: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val deviceData = hashMapOf(
+                    "userId" to userId,
+                    "deviceId" to deviceId,
+                    "timestamp" to System.currentTimeMillis(),
+                    "status" to "active"
+                )
+                db.collection("registered_devices")
+                    .document(deviceId)
+                    .set(deviceData)
+                    .await()
+                true
+            } catch (e: Exception) {
+                false
+            }
+        }
+    }
+
+    suspend fun fetchDeviceKey(userId: String, deviceId: String): String? {
+        return withContext(Dispatchers.IO) {
+            try {
+                var key: String? = null
+                var retryCount = 0
+                while (retryCount < 3 && key == null) {
+                    val document = db.collection("device_keys")
+                        .document("${userId}_$deviceId")
+                        .get()
+                        .await()
+                    if (document.exists()) {
+                        key = document.getString("key")
+                    } else {
+                        kotlinx.coroutines.delay(2000)
+                    }
+                    retryCount++
+                }
+                key
+            } catch (e: Exception) {
+                null
+            }
         }
     }
 }

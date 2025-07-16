@@ -99,15 +99,14 @@ fun EmailRegisterScreen(
                         )
                         userViewModel.registerUser(userEntity, onSuccess = {}, onError = { error = it })
                         // Store phoneId in new PhoneIdEntity table
-                        phoneIdDao.insertPhoneId(com.azura.azuratime.db.PhoneIdEntity(username = email, phoneId = phoneId))
-                        // Store phoneId in Firestore under 'users' collection
+                        phoneIdDao.insertPhoneId(com.azura.azuratime.db.PhoneIdEntity(phoneId = phoneId, email = email))
+                        // Store phoneId in Firestore under 'devices' collection
                         com.azura.azuratime.utils.FirebaseUtils.setDocument(
-                            collection = "users",
-                            documentId = email,
+                            collection = "devices",
+                            documentId = phoneId,
                             data = mapOf(
-                                "username" to email,
-                                "role" to "user",
-                                "phoneId" to phoneId
+                                "phoneId" to phoneId,
+                                "email" to email
                             )
                         )
                         // If admin, navigate to admin dashboard

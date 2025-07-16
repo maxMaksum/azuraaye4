@@ -2,26 +2,57 @@ package com.azura.azuratime.ui.auth
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.azura.azuratime.session.SessionManager
 import com.azura.azuratime.ui.components.AzuraFormField
 import com.azura.azuratime.utils.sha256
 import com.azura.azuratime.viewmodel.UserViewModel
+import com.azura.azuratime.viewmodel.LoginState
 
 @Composable
 fun LoginScreen(
-    userViewModel: UserViewModel = viewModel(),
-    onLoginSuccess: (role: String) -> Unit,
+    userViewModel: UserViewModel,
+    onLoginSuccess: (com.azura.azuratime.db.UserEntity) -> Unit,
     onBackToSignup: () -> Unit
 ) {
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    var loading by remember { mutableStateOf(false) }
+
+    // Get context and sessionManager once at the top of the composable
+    val context = LocalContext.current
+    val sessionManager = remember { SessionManager(context) }
+
+    // Handle login process
+    LaunchedEffect(userViewModel.loginState) {
+        when (userViewModel.loginState) {
+            is LoginState.Success -> {
+                userViewModel.currentUser.value?.let { user ->
+                    // Save Firebase UID to SessionManager
+                    val firebaseUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+                    firebaseUser?.uid?.let { uid ->
+                        sessionManager.clearUid() // Clear old UID before saving new one
+                        sessionManager.saveUid(uid)
+                    }
+                    onLoginSuccess(user)
+                }
+                userViewModel.resetLoginState()
+            }
+            is LoginState.Error -> {
+                error = (userViewModel.loginState as LoginState.Error).message
+                isLoading = false
+                userViewModel.resetLoginState()
+            }
+            else -> {}
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -31,7 +62,7 @@ fun LoginScreen(
     ) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
             IconButton(onClick = onBackToSignup) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Back to Sign Up")
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back to Sign Up")
             }
         }
         Text("Login", style = MaterialTheme.typography.headlineMedium)
@@ -60,33 +91,18 @@ fun LoginScreen(
         }
         Button(
             onClick = {
-                loading = true
-                // Try Firebase login first
-                userViewModel.loginFirebase(username, password,
-                    onSuccess = {
-                        loading = false
-                        onLoginSuccess(userViewModel.currentUser.value?.role ?: "")
-                    },
-                    onError = { firebaseError ->
-                        // If Firebase login fails, try offline login
-                        val hash = password.sha256()
-                        userViewModel.loginOffline(username, hash,
-                            onSuccess = {
-                                loading = false
-                                onLoginSuccess(userViewModel.currentUser.value?.role ?: "")
-                            },
-                            onError = { offlineError ->
-                                loading = false
-                                error = firebaseError + "\n" + offlineError
-                            }
-                        )
-                    }
-                )
+                if (username.isBlank() || password.isBlank()) {
+                    error = "Please fill all fields"
+                } else {
+                    isLoading = true
+                    error = null
+                    userViewModel.login(username, password)
+                }
             },
-            enabled = !loading,
+            enabled = !isLoading,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Login")
+            Text(if (isLoading) "Logging in..." else "Login")
         }
     }
 }

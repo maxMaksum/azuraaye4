@@ -10,6 +10,6 @@ interface PhoneIdDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPhoneId(phoneIdEntity: PhoneIdEntity)
 
-    @Query("SELECT phoneId FROM phone_ids WHERE username = :username LIMIT 1")
-    suspend fun getPhoneIdForUser(username: String): String?
+    @Query("SELECT * FROM phone_ids WHERE phoneId = :phoneId LIMIT 1")
+    suspend fun getPhoneRegistration(phoneId: String): PhoneIdEntity?
 }

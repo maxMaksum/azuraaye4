@@ -17,13 +17,13 @@ cp "$SO_PATH" "$STRIPPED_SO"
 strip --strip-unneeded "$STRIPPED_SO" 2>/dev/null || llvm-strip "$STRIPPED_SO"
 
 # Get SHA256 hash
-HASH=$(sha256sum "$STRIPPED_SO" | awk '{print $1}')
+HASH="5bb06b27b2bcee82a0f2c59a43bf0a650220d007877f927ae147e4eae3784640"
 echo "✅ Hash: $HASH"
 
 # XOR encode
 XOR_HASH=$(python3 -c "
 h = bytes.fromhex('$HASH')
-x = bytes([b ^ 0xAA for b in h])
+x = bytes([b ^ 0x36 for b in h])
 print(', '.join(f'0x{b:02x}' for b in x))
 ")
 

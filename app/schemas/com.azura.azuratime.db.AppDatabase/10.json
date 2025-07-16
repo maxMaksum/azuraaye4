@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 9,
-    "identityHash": "a25bbc2fa0301fb1ad36b11e2fe40604",
+    "version": 10,
+    "identityHash": "30633bdf65bc73ab64784650e1e537a3",
     "entities": [
       {
         "tableName": "class_options",
@@ -384,7 +384,7 @@
       },
       {
         "tableName": "phone_ids",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`phoneId` TEXT NOT NULL, `email` TEXT, PRIMARY KEY(`phoneId`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`phoneId` TEXT NOT NULL, `userId` TEXT, `email` TEXT, `timestamp` INTEGER NOT NULL, PRIMARY KEY(`phoneId`))",
         "fields": [
           {
             "fieldPath": "phoneId",
@@ -393,10 +393,22 @@
             "notNull": true
           },
           {
+            "fieldPath": "userId",
+            "columnName": "userId",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
             "fieldPath": "email",
             "columnName": "email",
             "affinity": "TEXT",
             "notNull": false
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -412,7 +424,7 @@
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'a25bbc2fa0301fb1ad36b11e2fe40604')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '30633bdf65bc73ab64784650e1e537a3')"
     ]
   }
 }

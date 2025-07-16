@@ -5,6 +5,8 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "phone_ids")
 data class PhoneIdEntity(
-    @PrimaryKey val username: String, // or userId if you have one
-    val phoneId: String
+    @PrimaryKey val phoneId: String,
+    val userId: String? = null,  // Add this field
+    val email: String? = null,
+    val timestamp: Long = System.currentTimeMillis()
 )

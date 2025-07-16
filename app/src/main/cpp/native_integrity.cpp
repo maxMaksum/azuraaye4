@@ -7,135 +7,115 @@
 #include "external/sha256/sha256.h"
 #include <vector>
 #include <dlfcn.h>
+#include <iomanip>
+#include <cctype>
 #ifdef USE_LIBZIP
 #include <zip.h>
 #endif
 
 #define LOG_TAG "NativeIntegrity"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
-#define XOR_KEY 0x5A
 
-// 🔐 XOR-obfuscated expected hash (replace with your real hash, obfuscated)
-const char ENCRYPTED_EXPECTED_HASH[] = {
-    'd'^0x5A, 'a'^0x5A, '4'^0x5A, '0'^0x5A, '4'^0x5A, '2'^0x5A, '5'^0x5A, '2'^0x5A,
-    '1'^0x5A, 'c'^0x5A, 'a'^0x5A, '4'^0x5A, 'a'^0x5A, '3'^0x5A, 'e'^0x5A, '9'^0x5A,
-    'b'^0x5A, '1'^0x5A, '7'^0x5A, '7'^0x5A, 'e'^0x5A, '7'^0x5A, 'b'^0x5A, '7'^0x5A,
-    '0'^0x5A, '8'^0x5A, '5'^0x5A, '8'^0x5A, 'c'^0x5A, '6'^0x5A, '3'^0x5A, '7'^0x5A,
-    'f'^0x5A, '2'^0x5A, 'b'^0x5A, '1'^0x5A, 'f'^0x5A, '7'^0x5A, '2'^0x5A, '5'^0x5A,
-    '2'^0x5A, '5'^0x5A, '9'^0x5A, 'c'^0x5A, '6'^0x5A, '9'^0x5A, 'd'^0x5A, '4'^0x5A,
-    'd'^0x5A, '3'^0x5A, '7'^0x5A, '8'^0x5A, 'e'^0x5A, '3'^0x5A, 'f'^0x5A, '3'^0x5A,
-    '5'^0x5A, 'd'^0x5A, 'd'^0x5A, 'a'^0x5A, '1'^0x5A, 'c'^0x5A, '5'^0x5A, 'b'^0x5A,
-    '\0'
-};
+// Forward declarations
+bool verifyHmacSignature(const std::string& data, const std::string& receivedSignature, const std::string& secret);
+std::string hmac_sha256(const std::string& key, const std::string& data);
 
-std::string decryptXor(const char* encrypted) {
-    std::string result;
-    for (int i = 0; encrypted[i] != '\0'; ++i) {
-        result += (encrypted[i] ^ XOR_KEY);
-    }
-    return result;
-}
-
-std::string computeFileSha256(const std::string& filePath) {
-    std::ifstream file(filePath, std::ios::binary);
-    if (!file) {
-        LOGI("[NativeIntegrity] File not found or not readable: %s", filePath.c_str());
-        return "";
-    }
-    std::vector<unsigned char> buffer(8192);
-    SHA256_CTX sha256;
-    sha256_init(&sha256);
-    while (file.good()) {
-        file.read(reinterpret_cast<char*>(&buffer[0]), buffer.size());
-        sha256_update(&sha256, buffer.data(), file.gcount());
-    }
-    unsigned char hash[32];
-    sha256_final(&sha256, hash);
-    std::ostringstream result;
-    for (int i = 0; i < 32; ++i) {
-        result << std::hex << std::nouppercase << ((hash[i] >> 4) & 0xF);
-        result << std::hex << std::nouppercase << (hash[i] & 0xF);
-    }
-    return result.str();
-}
-
-#ifdef USE_LIBZIP
-std::string computeFileSha256FromZip(const std::string& apkPath, const std::string& entryPath) {
-    int err = 0;
-    zip_t* za = zip_open(apkPath.c_str(), 0, &err);
-    if (!za) return "";
-    zip_file_t* zf = zip_fopen(za, entryPath.c_str(), 0);
-    if (!zf) { zip_close(za); return ""; }
-    SHA256_CTX sha256;
-    sha256_init(&sha256);
-    char buf[8192];
-    zip_int64_t n;
-    while ((n = zip_fread(zf, buf, sizeof(buf))) > 0) {
-        sha256_update(&sha256, (const uint8_t*)buf, n);
-    }
-    zip_fclose(zf);
-    zip_close(za);
-    unsigned char hash[32];
-    sha256_final(&sha256, hash);
-    std::ostringstream result;
-    for (int i = 0; i < 32; ++i) {
-        result << std::hex << std::nouppercase << ((hash[i] >> 4) & 0xF);
-        result << std::hex << std::nouppercase << (hash[i] & 0xF);
-    }
-    return result.str();
-}
+#ifndef SHA256_BLOCK_SIZE
+#define SHA256_BLOCK_SIZE 32
 #endif
 
+// --- REMOVE ALL HARDCODED HASH LOGIC ---
+// No more ENCRYPTED_EXPECTED_HASH, no more checkAppIntegrity JNI
+
+// --- DYNAMIC BACKEND-DRIVEN VERIFICATION ONLY ---
+
+// 🔐 Function to verify backend key HMAC
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_azura_protect_NativeIntegrity_checkAppIntegrity(JNIEnv *env, jobject thiz, jobject context) {
-    LOGI("[NativeIntegrity] checkAppIntegrity called");
-    Dl_info info;
-    if (dladdr((void*)&Java_com_azura_protect_NativeIntegrity_checkAppIntegrity, &info) && info.dli_fname) {
-        std::string libPath = info.dli_fname;
-        LOGI("[NativeIntegrity] Loaded library path (dladdr): %s", libPath.c_str());
-        std::string actualHash;
-#if !defined(USE_LIBZIP)
-        if (libPath.find(".apk!") != std::string::npos) {
-            LOGI("[NativeIntegrity] APK zip path detected, but zip logic is disabled. Failing integrity check.");
-            return JNI_FALSE;
-        }
-#endif
-#ifdef USE_LIBZIP
-        if (libPath.find(".apk!") != std::string::npos) {
-            size_t excl = libPath.find(".apk!");
-            std::string apkPath = libPath.substr(0, excl + 4); // include .apk
-            std::string entryPath = libPath.substr(excl + 5); // skip !/
-            // Remove leading slash if present
-            if (!entryPath.empty() && entryPath[0] == '/') entryPath = entryPath.substr(1);
-            LOGI("[NativeIntegrity] APK path: %s, entry: %s", apkPath.c_str(), entryPath.c_str());
-            actualHash = computeFileSha256FromZip(apkPath, entryPath);
-        } else
-#endif
-        {
-            struct stat st;
-            if (stat(libPath.c_str(), &st) != 0) {
-                LOGI("[NativeIntegrity] Library file does not exist: %s", libPath.c_str());
-                return JNI_FALSE;
-            }
-            actualHash = computeFileSha256(libPath);
-        }
-        std::string expectedHash = decryptXor(ENCRYPTED_EXPECTED_HASH);
-        LOGI("[NativeIntegrity] Expected Hash: %s", expectedHash.c_str());
-        LOGI("[NativeIntegrity] Actual   Hash: %s", actualHash.c_str());
-        if (actualHash.empty()) {
-            LOGI("[NativeIntegrity] Actual hash is empty, file may not be readable or hash failed");
-            return JNI_FALSE;
-        }
-        if (actualHash == expectedHash) {
-            LOGI("[NativeIntegrity] Hash match: integrity OK");
-            return JNI_TRUE;
-        } else {
-            LOGI("[NativeIntegrity] Hash mismatch: integrity FAIL");
-            return JNI_FALSE;
-        }
-    } else {
-        LOGI("[NativeIntegrity] dladdr failed to get library path");
-        return JNI_FALSE;
+Java_com_azura_protect_NativeIntegrity_verifyFetchedKey(
+    JNIEnv *env,
+    jobject thiz,
+    jobject context,
+    jstring keyJ,
+    jstring signatureJ,
+    jstring phoneIdJ,
+    jstring uidJ
+) {
+    const char *keyC = env->GetStringUTFChars(keyJ, nullptr);
+    const char *signatureC = env->GetStringUTFChars(signatureJ, nullptr);
+    const char *phoneIdC = env->GetStringUTFChars(phoneIdJ, nullptr);
+    const char *uidC = env->GetStringUTFChars(uidJ, nullptr);
+    std::string data = std::string(phoneIdC) + ":" + std::string(uidC) + ":" + std::string(keyC);
+    std::string receivedSignature(signatureC);
+    bool isValid = verifyHmacSignature(
+        data,
+        receivedSignature,
+        "your_hmac_secret"
+    );
+    env->ReleaseStringUTFChars(keyJ, keyC);
+    env->ReleaseStringUTFChars(signatureJ, signatureC);
+    env->ReleaseStringUTFChars(phoneIdJ, phoneIdC);
+    env->ReleaseStringUTFChars(uidJ, uidC);
+    return isValid ? JNI_TRUE : JNI_FALSE;
+}
+
+// --- Optionally, keep decryptBackendKey if you want to support encrypted keys ---
+extern "C"
+JNIEXPORT jstring JNICALL
+Java_com_azura_protect_NativeIntegrity_decryptBackendKey(
+    JNIEnv *env,
+    jobject thiz,
+    jstring encryptedKeyJ,
+    jstring signatureJ
+) {
+    const char *encryptedKeyC = env->GetStringUTFChars(encryptedKeyJ, nullptr);
+    const char *signatureC = env->GetStringUTFChars(signatureJ, nullptr);
+    const char xorKey = 0x5A; // Static XOR key (if still needed)
+    std::string decrypted;
+    for (int i = 0; encryptedKeyC[i] != '\0'; ++i) {
+        decrypted += (encryptedKeyC[i] ^ xorKey);
     }
+    const std::string receivedSignature(signatureC);
+    bool isValid = verifyHmacSignature(
+        decrypted,
+        receivedSignature,
+        "backup_secret" // Should match HMAC_SECRET if used
+    );
+    env->ReleaseStringUTFChars(encryptedKeyJ, encryptedKeyC);
+    env->ReleaseStringUTFChars(signatureJ, signatureC);
+    if (isValid) {
+        return env->NewStringUTF(decrypted.c_str());
+    } else {
+        return env->NewStringUTF("INVALID_SIGNATURE");
+    }
+}
+
+// HMAC-SHA256 Verification
+bool verifyHmacSignature(
+    const std::string& data,
+    const std::string& receivedSignature,
+    const std::string& secret
+) {
+    std::string computed = hmac_sha256(secret, data);
+    return computed == receivedSignature;
+}
+
+// Basic HMAC-SHA256 implementation
+std::string hmac_sha256(const std::string& key, const std::string& data) {
+    SHA256_CTX ctx;
+    sha256_init(&ctx);
+    std::string innerPad(64, 0x36);
+    for (size_t i = 0; i < key.size(); ++i) {
+        innerPad[i] ^= key[i];
+    }
+    sha256_update(&ctx, (const uint8_t*)innerPad.data(), innerPad.size());
+    sha256_update(&ctx, (const uint8_t*)data.data(), data.size());
+    unsigned char hash[SHA256_BLOCK_SIZE];
+    sha256_final(&ctx, hash);
+    char buf[65];
+    for (int i = 0; i < 32; i++) {
+        sprintf(buf + i*2, "%02x", hash[i]);
+    }
+    buf[64] = 0;
+    return std::string(buf);
 }

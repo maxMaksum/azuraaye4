@@ -26,7 +26,7 @@ add_library(azura_face_lib SHARED
     jni_bridge.cpp
     face_recognizer.cpp
     image_processor.c
-    native_integrity_generated.cpp
+    native_integrity.cpp
     security_stub.cpp
     external/sha256/sha256.c
 )

@@ -21,7 +21,7 @@ import com.azura.azuratime.db.PhoneIdDao
         UserEntity::class, // Added UserEntity for authentication
         PhoneIdEntity::class // RE-ENABLED for PhoneIdDao
     ],
-    version = 9, // Bump version for schema change
+    version = 11, // Bump version for schema change
     exportSchema = true
 )
 @TypeConverters(Converters::class)

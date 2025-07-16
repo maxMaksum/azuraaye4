@@ -13,7 +13,7 @@ extern "C" bool verifyApkIntegrity(const char* apkPath, const char* targetEntry,
     int err = 0;
     zip_t* apk = zip_open(apkPath, 0, &err);
     if (!apk) {
-        LOGD("❌ Failed to open APK with libzip");
+        LOGD("❌ Failed to open APK: %s", apkPath);
         return false;
     }
 
@@ -32,11 +32,16 @@ extern "C" bool verifyApkIntegrity(const char* apkPath, const char* targetEntry,
     }
 
     std::vector<unsigned char> buffer(sb.size);
-    zip_fread(file, buffer.data(), sb.size);
+    zip_int64_t bytesRead = zip_fread(file, buffer.data(), sb.size);
     zip_fclose(file);
     zip_close(apk);
 
-    // Hash using portable SHA256
+    if (bytesRead != sb.size) {
+        LOGD("❌ Incomplete read: got %ld bytes, expected %lu", (long)bytesRead, (unsigned long)sb.size);
+        return false;
+    }
+
+    // SHA256 hashing
     unsigned char hash[32];
     SHA256_CTX ctx;
     sha256_init(&ctx);

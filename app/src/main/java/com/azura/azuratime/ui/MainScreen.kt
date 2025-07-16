@@ -32,7 +32,11 @@ import com.azura.azuratime.ui.checkin.CheckInScreen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen() {
+fun MainScreen(
+    integrityCheckPassed: Boolean = false,
+    startDestination: String = "phone_register",
+    onBackToWelcome: () -> Unit = {}
+) {
     val navController = rememberNavController()
     var useBackCamera by remember { mutableStateOf(false) }
 
@@ -133,19 +137,10 @@ fun MainScreen() {
                 TestFaceImageScreen()
             }
             composable(Screen.AdminDashboard.route) {
-                com.azura.azuratime.ui.auth.DashboardScreen(
-                    role = "admin",
-                    name = "Admin",
-                    onLogout = {},
-                    onManageUsers = {},
-                    onManageFaces = {},
-                    onGoToMain = {},
-                    onDatabaseSync = { navController.navigate("database_sync") }, // <-- Navigate to DatabaseSyncScreen
-                    onDeveloperSettings = {}
-                )
-            }
-            composable("database_sync") {
-                com.azura.azuratime.ui.admin.DatabaseSyncScreen()
+                // Removed DashboardScreen from main app navigation
+                // You should handle admin dashboard in the auth flow only
+                // Optionally, show a message or redirect
+                Text("Admin Dashboard is only available after authentication.")
             }
         }
     }
@@ -199,7 +194,15 @@ fun BottomNav(navController: NavHostController) {
 }
 
 @Composable
-fun MainApp() {
-    AuthNavHost()
+fun MainApp(
+    integrityCheckPassed: Boolean = false,
+    startDestination: String = "phone_register",
+    onBackToWelcome: () -> Unit = {}
+) {
+    MainScreen(
+        integrityCheckPassed = integrityCheckPassed,
+        startDestination = startDestination,
+        onBackToWelcome = onBackToWelcome
+    )
 }
 
