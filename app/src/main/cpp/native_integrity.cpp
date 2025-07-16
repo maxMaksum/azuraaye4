@@ -47,10 +47,12 @@ Java_com_azura_protect_NativeIntegrity_verifyFetchedKey(
     const char *uidC = env->GetStringUTFChars(uidJ, nullptr);
     std::string data = std::string(phoneIdC) + ":" + std::string(uidC) + ":" + std::string(keyC);
     std::string receivedSignature(signatureC);
+    // Fetch HMAC secret from Keystore
+    std::string hmacSecret = getHmacSecretFromKeystore(env, context);
     bool isValid = verifyHmacSignature(
         data,
         receivedSignature,
-        "your_hmac_secret"
+        hmacSecret
     );
     env->ReleaseStringUTFChars(keyJ, keyC);
     env->ReleaseStringUTFChars(signatureJ, signatureC);
@@ -66,7 +68,8 @@ Java_com_azura_protect_NativeIntegrity_decryptBackendKey(
     JNIEnv *env,
     jobject thiz,
     jstring encryptedKeyJ,
-    jstring signatureJ
+    jstring signatureJ,
+    jobject context // <-- Add context for Keystore access
 ) {
     const char *encryptedKeyC = env->GetStringUTFChars(encryptedKeyJ, nullptr);
     const char *signatureC = env->GetStringUTFChars(signatureJ, nullptr);
@@ -76,10 +79,12 @@ Java_com_azura_protect_NativeIntegrity_decryptBackendKey(
         decrypted += (encryptedKeyC[i] ^ xorKey);
     }
     const std::string receivedSignature(signatureC);
+    // Fetch HMAC secret from Keystore
+    std::string hmacSecret = getHmacSecretFromKeystore(env, context);
     bool isValid = verifyHmacSignature(
         decrypted,
         receivedSignature,
-        "backup_secret" // Should match HMAC_SECRET if used
+        hmacSecret
     );
     env->ReleaseStringUTFChars(encryptedKeyJ, encryptedKeyC);
     env->ReleaseStringUTFChars(signatureJ, signatureC);
@@ -118,4 +123,33 @@ std::string hmac_sha256(const std::string& key, const std::string& data) {
     }
     buf[64] = 0;
     return std::string(buf);
+}
+
+// Helper: Fetch HMAC secret from Android Keystore via JNI
+std::string getHmacSecretFromKeystore(JNIEnv* env, jobject context) {
+    jclass keyStoreHelperClass = env->FindClass("com/azura/azuratime/KeyStoreHelper");
+    if (!keyStoreHelperClass) {
+        LOGI("KeyStoreHelper class not found");
+        return "";
+    }
+    jmethodID getHmacSecretMethod = env->GetStaticMethodID(
+        keyStoreHelperClass,
+        "getHmacSecret",
+        "(Landroid/content/Context;)Ljava/lang/String;"
+    );
+    if (!getHmacSecretMethod) {
+        LOGI("getHmacSecret method not found");
+        return "";
+    }
+    jstring secretJ = (jstring)env->CallStaticObjectMethod(keyStoreHelperClass, getHmacSecretMethod, context);
+    if (!secretJ) {
+        LOGI("getHmacSecret returned null");
+        return "";
+    }
+    const char* secretC = env->GetStringUTFChars(secretJ, nullptr);
+    std::string secretStr(secretC);
+    env->ReleaseStringUTFChars(secretJ, secretC);
+    env->DeleteLocalRef(secretJ);
+    env->DeleteLocalRef(keyStoreHelperClass);
+    return secretStr;
 }

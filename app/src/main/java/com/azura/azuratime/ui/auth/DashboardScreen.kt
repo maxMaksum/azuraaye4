@@ -138,17 +138,22 @@ fun DashboardScreen(
                 }
                 is KeyFetchState.Success -> {
                     Spacer(Modifier.height(8.dp))
-                    val key = (keyFetchState as KeyFetchState.Success).key
+                    // Always use decrypted key from Keystore
+                    val decryptedKey = loadDecryptedKeyWithKeystore(context)
                     val signature = (keyFetchState as KeyFetchState.Success).signature
-                    Text("Generated Key: ${key.take(8)}...", style = MaterialTheme.typography.bodyMedium)
+                    Text("Generated Key: "+ (decryptedKey?.take(8) ?: "<none>") + "...", style = MaterialTheme.typography.bodyMedium)
 
-                    // ✅ Call native verifyFetchedKey
-                    LaunchedEffect(key, signature) {
+                    // ✅ Call native verifyFetchedKey with decrypted key
+                    LaunchedEffect(decryptedKey, signature) {
                         try {
-                            val result = com.azura.protect.NativeIntegrity.verifyFetchedKey(
-                                context, key, signature, deviceId, userUid
-                            )
-                            android.util.Log.i("JNI-DEBUG", "Key HMAC verify result: $result")
+                            if (decryptedKey != null) {
+                                val result = com.azura.protect.NativeIntegrity.verifyFetchedKey(
+                                    context, decryptedKey, signature, deviceId, userUid
+                                )
+                                android.util.Log.i("JNI-DEBUG", "Key HMAC verify result: $result")
+                            } else {
+                                android.util.Log.e("JNI-DEBUG", "Decrypted key is null!")
+                            }
                         } catch (e: Exception) {
                             android.util.Log.e("JNI-DEBUG", "Key HMAC verify failed: ${e.message}")
                         }
